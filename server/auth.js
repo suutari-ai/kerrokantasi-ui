@@ -2,6 +2,8 @@
 
 import {Passport} from 'passport';
 import HelsinkiStrategy from 'passport-helsinki';
+//import Strategy from 'passport-oidc-client';
+import {Strategy} from 'passport-openidconnect';
 import jwt from 'jsonwebtoken';
 import merge from 'lodash/merge';
 import _debug from 'debug';
@@ -39,6 +41,7 @@ export function getPassport(settings) {
   const getTokenFromAPI = true;
   const jwtOptions = {key: settings.jwtKey, audience: 'kerrokantasi'};
   const passport = new Passport();
+  /*
   const helsinkiStrategy = new HelsinkiStrategy({
     appTokenURL: 'http://localhost:8000/jwt-token/',
     authorizationURL: 'http://localhost:8000/oauth2/authorize/',
@@ -66,6 +69,43 @@ export function getPassport(settings) {
     }
   });
   passport.use(helsinkiStrategy);
+   */
+
+  /*
+  const strategy = new Strategy(
+    {
+      clientId: '332114', //settings.helsinkiAuthId,
+      authority: 'http://localhost:8000/openid',
+      callbackURL: settings.publicUrl + '/login/helsinki/return',
+      verbose_logging: true
+    },
+    (results, error) => {
+      debug("dippadappa");
+      debug("results:", results);
+      debug("error:", error);
+    });
+  debug('oidc strategy config:', strategy._config);
+   */
+  const strategy = new Strategy(
+    {
+      scope: 'profile email github api-kerrokantasi',
+      issuer: 'http://localhost:8000/openid',
+      clientID: '358712',
+      clientSecret: '510d049135d9cce96e54a67fa1f09fa8cfa9ce774cb88aa445b630c4',
+      authorizationURL: 'http://localhost:8000/openid/authorize',
+      tokenURL: 'http://localhost:8000/openid/token',
+      userInfoURL: 'http://localhost:8000/openid/userinfo',
+      callbackURL: settings.publicUrl + '/login/helsinki/return'
+    },
+    (token, tokenSecret, profile, cb) => {
+      debug("dippadappa");
+      debug("token:", token);
+      debug("tokenSecret:", tokenSecret);
+      debug("profile:", profile);
+      cb(null, profile);
+    });
+
+  passport.use(strategy);
   if (settings.dev && false) { // preferably develop using SSO
     passport.use(new MockStrategy(jwtOptions));
   }
@@ -85,14 +125,17 @@ function successfulLoginHandler(req, res) {
   res.send('<html><body>Login successful.<script>' + js + '</script>');
 }
 
-export function addAuth(server, passport, settings) {
+export function addAuth(server, settings) {
+  const passport = getPassport(settings);
   server.use(passport.initialize());
   server.use(passport.session());
-  server.get('/login/helsinki', passport.authenticate('helsinki'));
+  server.get('/login/helsinki', passport.authenticate('openidconnect'));
+  
+  //server.get('/login/helsinki', passport.authenticate('helsinki'));
   if (settings.dev && false) {  // preferably develop using SSO
     server.get('/login/mock', passport.authenticate('mock'), successfulLoginHandler);
   }
-  server.get('/login/helsinki/return', passport.authenticate('helsinki'), successfulLoginHandler);
+  server.get('/login/helsinki/return', passport.authenticate('openidconnect'), successfulLoginHandler);
   server.get('/logout', (req, res) => {
     res.send('<html><body><form method="post"></form><script>document.forms[0].submit()</script>');
   });
