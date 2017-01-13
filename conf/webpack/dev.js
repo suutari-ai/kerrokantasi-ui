@@ -2,6 +2,7 @@
 
 var common = require('./common');
 var merge = require('webpack-merge');
+var path = require('path');
 var webpack = require('webpack');
 
 module.exports = function getDevConfig(serverUrl) {
@@ -12,6 +13,12 @@ module.exports = function getDevConfig(serverUrl) {
       common.paths.ENTRY
     ],
     debug: true,
+    cache: true,
+    resolve: {
+      unsafeCache: true
+    },
+    recordsInputPath: path.resolve(common.paths.ROOT, 'records.json'),
+    recordsOutputPath: path.resolve(common.paths.ROOT, 'records.json'),
     devtool: 'cheap-module-eval-source-map',
     output: {
       path: common.paths.OUTPUT,
