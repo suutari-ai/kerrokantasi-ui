@@ -40,6 +40,10 @@ export function getPassport(settings) {
   const jwtOptions = {key: settings.jwtKey, audience: 'kerrokantasi'};
   const passport = new Passport();
   const helsinkiStrategy = new HelsinkiStrategy({
+    appTokenURL: 'http://localhost:8000/jwt-token/',
+    authorizationURL: 'http://localhost:8000/oauth2/authorize/',
+    tokenURL: 'http://localhost:8000/oauth2/token/',
+    userProfileURL: 'http://localhost:8000/user/',
     clientID: settings.helsinkiAuthId,
     clientSecret: settings.helsinkiAuthSecret,
     callbackURL: settings.publicUrl + '/login/helsinki/return'
@@ -95,7 +99,7 @@ export function addAuth(server, passport, settings) {
   server.post('/logout', (req, res) => {
     req.logout();
     const redirectUrl = req.query.next || '/';
-    res.redirect(`https://api.hel.fi/sso/logout/?next=${redirectUrl}`);
+    res.redirect(`http://localhost:8000/logout/?next=${redirectUrl}`);
   });
   server.get('/me', (req, res) => {
     res.json(req.user || {});
