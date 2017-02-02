@@ -3,7 +3,7 @@
 import {Passport} from 'passport';
 import HelsinkiStrategy from 'passport-helsinki';
 //import Strategy from 'passport-oidc-client';
-import {Strategy} from 'passport-openidconnect';
+//import {Strategy} from 'passport-openidconnect';
 import jwt from 'jsonwebtoken';
 import merge from 'lodash/merge';
 import _debug from 'debug';
@@ -86,26 +86,86 @@ export function getPassport(settings) {
     });
   debug('oidc strategy config:', strategy._config);
    */
-  const strategy = new Strategy(
-    {
-      scope: 'profile email github api-kerrokantasi',
-      issuer: 'http://localhost:8000/openid',
-      clientID: '358712',
-      clientSecret: '510d049135d9cce96e54a67fa1f09fa8cfa9ce774cb88aa445b630c4',
-      authorizationURL: 'http://localhost:8000/openid/authorize',
-      tokenURL: 'http://localhost:8000/openid/token',
-      userInfoURL: 'http://localhost:8000/openid/userinfo',
-      callbackURL: settings.publicUrl + '/login/helsinki/return'
-    },
-    (token, tokenSecret, profile, cb) => {
-      debug("dippadappa");
-      debug("token:", token);
-      debug("tokenSecret:", tokenSecret);
-      debug("profile:", profile);
-      cb(null, profile);
-    });
 
-  passport.use(strategy);
+  const Issuer = require('openid-client').Issuer;
+  const Strategy = require('openid-client').Strategy;
+  const issuer = new Issuer({
+    issuer: "http://localhost:8000/openid",
+    authorization_endpoint: "http://localhost:8000/openid/authorize",
+    token_endpoint: "http://localhost:8000/openid/token",
+    userinfo_endpoint: "http://localhost:8000/openid/userinfo",
+    jwks_uri: "http://localhost:8000/openid/jwks",
+    id_token_signing_alg_values_supported: ["HS256", "RS256"],
+    end_session_endpoint: "http://localhost:8000/openid/end-session",
+    token_endpoint_auth_methods_supported: [
+      "client_secret_post",
+      "client_secret_basic"
+    ],
+    "response_types_supported": [
+      "code",
+      "id_token",
+      "id_token token",
+      "code token",
+      "code id_token",
+      "code id_token token"
+    ],
+    "subject_types_supported": ["public"]
+  });
+  // TODO: Construct issuer with discover!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // Issuer.discover('http://localhost:8000/openid')
+  //   .then(function (issuer) {
+  //     console.log('Discovered issuer %s', issuer);
+  //   });
+  const client = new issuer.Client({
+    client_id: '358712',
+    redirect_uris: [settings.publicUrl + '/login/helsinki/return'],
+    response_types: ['code']
+  });
+
+  const strategy = new Strategy(
+    {client: client, params: {scope: 'openid profile https://api.hel.fi/auth/kerrokantasi'}},
+    // {
+    //   client: client,
+    //   scope: 'openid https://api.hel.fi/auth/kerrokantasi'
+    // },
+    (tokenset, userinfo, done) => {
+      debug('tokenset', tokenset);
+      debug('access_token', tokenset.access_token);
+      debug('id_token', tokenset.id_token);
+      debug('claims', tokenset.claims);
+      debug('userinfo', userinfo);
+
+      //User.findOne({ id: tokenset.claims.sub }, function (err, user) {
+      //  if (err) return done(err);
+      userinfo.displayName = userinfo.name;
+      userinfo.token = tokenset.id_token;
+      return done(null, userinfo);
+    }
+  );
+  passport.use('oidc', strategy);
+
+  // const strategy = new Strategy(
+  //   {
+  //     scope: 'https://api.hel.fi/auth/kerrokantasi',
+  //     issuer: 'http://localhost:8000/openid',
+  //     clientID: '358712',
+  //     clientSecret: '510d049135d9cce96e54a67fa1f09fa8cfa9ce774cb88aa445b630c4',
+  //     authorizationURL: 'http://localhost:8000/openid/authorize',
+  //     tokenURL: 'http://localhost:8000/openid/token',
+  //     userInfoURL: 'http://localhost:8000/openid/userinfo',
+  //     callbackURL: settings.publicUrl + '/login/helsinki/return',
+  //     passReqToCallback: true
+  //   },
+  //   (req, iss, sub, profile, verified) => {
+  //     debug("dippadappa");
+  //     debug("iss:", iss);
+  //     debug("sub:", sub);
+  //     debug("profile:", profile);
+  //     verified(null, profile, profile);
+  //   });
+
+  // passport.use(strategy);
+
   if (settings.dev && false) { // preferably develop using SSO
     passport.use(new MockStrategy(jwtOptions));
   }
@@ -129,13 +189,13 @@ export function addAuth(server, settings) {
   const passport = getPassport(settings);
   server.use(passport.initialize());
   server.use(passport.session());
-  server.get('/login/helsinki', passport.authenticate('openidconnect'));
+  server.get('/login/helsinki', passport.authenticate('oidc'));
   
   //server.get('/login/helsinki', passport.authenticate('helsinki'));
   if (settings.dev && false) {  // preferably develop using SSO
     server.get('/login/mock', passport.authenticate('mock'), successfulLoginHandler);
   }
-  server.get('/login/helsinki/return', passport.authenticate('openidconnect'), successfulLoginHandler);
+  server.get('/login/helsinki/return', passport.authenticate('oidc'), successfulLoginHandler);
   server.get('/logout', (req, res) => {
     res.send('<html><body><form method="post"></form><script>document.forms[0].submit()</script>');
   });

@@ -64,6 +64,7 @@
     "morgan": "^1.6.1",
     "nconf": "^0.8.2",
     "node-fetch": "^1.3.3",
+    "openid-client": "^1.5.2",
     "passport": "^0.3.2",
     "passport-helsinki": "City-of-Helsinki/passport-helsinki#fec48d78e0258aa1472369014ffc01cd98c7cdc6",
     "passport-oidc-client": "^1.0.4",
