@@ -142,6 +142,7 @@ export function getPassport(settings) {
       return done(null, userinfo);
     }
   );
+  debug('strategy._params:', strategy._params);
   passport.use('oidc', strategy);
 
   // const strategy = new Strategy(
