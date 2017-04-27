@@ -137,9 +137,21 @@ export function getPassport(settings) {
 
       //User.findOne({ id: tokenset.claims.sub }, function (err, user) {
       //  if (err) return done(err);
-      userinfo.displayName = userinfo.name;
-      userinfo.token = tokenset.id_token;
-      return done(null, userinfo);
+      const profile = {
+        id: userinfo.sub,
+        displayName: userinfo.name,
+        name: {
+          familyName: userinfo.family_name,
+          givenName: userinfo.given_name
+        },
+        //department: userinfo.department_name,
+        /*emails: [
+          {value: userinfo.email}
+        ],*/
+        username: userinfo.preferred_username,
+        token: tokenset.id_token
+      };
+      return done(null, profile);
     }
   );
   debug('strategy._params:', strategy._params);

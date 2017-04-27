@@ -25,7 +25,7 @@ export function apiCall(state, endpoint, params, options = {}) {
     "Accept": "application/json"  // eslint-disable-line quote-props
   };
   if (user && user.token) {
-    defaultHeaders.Authorization = "JWT " + user.token;
+    defaultHeaders.Authorization = "Bearer " + user.token;
   }
   options.headers = merge(defaultHeaders, options.headers || {});  // eslint-disable-line no-param-reassign
   const url = getApiURL(endpoint, params);
