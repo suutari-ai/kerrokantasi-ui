@@ -5,7 +5,7 @@ import cookieSession from 'cookie-session';
 import express from 'express';
 import getSettings from './getSettings';
 import {getCompiler, applyCompilerMiddleware} from './bundler';
-import {getPassport, addAuth} from './auth';
+import {addAuth} from './auth';
 import {inspect} from 'util';
 import morgan from 'morgan';
 import renderMiddleware from "./render-middleware";
@@ -19,7 +19,6 @@ function ignition() {
   }
   const server = express();
   let compiler = getCompiler(settings, true);
-  const passport = getPassport(settings);
 
   server.use('/', express.static(compiler.options.paths.OUTPUT));
   server.use('/assets', express.static(compiler.options.paths.ASSETS));
@@ -34,9 +33,7 @@ function ignition() {
     }
   });
   server.use(cookieSession({name: 's', secret: settings.sessionSecret, maxAge: 86400 * 1000}));
-  server.use(passport.initialize());
-  server.use(passport.session());
-  addAuth(server, passport, settings);
+  addAuth(server, settings);
 
   if (settings.dev) {
     applyCompilerMiddleware(server, compiler, settings);
