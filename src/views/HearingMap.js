@@ -18,7 +18,6 @@ class HearingMap extends React.Component {
     const {formatMessage} = this.props.intl;
     const {hearingMap} = this.props.hearingLists;
     const hearings = (hearingMap && Array.isArray(hearingMap.data) ? hearingMap.data : []);
-
     return (<div className="container">
       <Helmet title={formatMessage({id: 'hearingMap'})}/>
       <h1 className="page-title"><FormattedMessage id="hearingMap"/></h1>
@@ -30,7 +29,11 @@ class HearingMap extends React.Component {
 HearingMap.propTypes = {
   intl: intlShape.isRequired,
   dispatch: React.PropTypes.func,
-  hearingLists: React.PropTypes.object
+  hearingLists: React.PropTypes.object,
 };
 
-export default connect((state) => ({hearingLists: state.hearingLists}))(injectIntl(HearingMap));
+export default connect(
+  (state) => ({hearingLists: state.hearingLists, language: state.language})
+)(
+  injectIntl(HearingMap)
+);

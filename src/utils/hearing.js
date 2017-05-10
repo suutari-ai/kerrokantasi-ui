@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import {initNewSection} from './section';
+import getAttr from "./getAttr";
 
 
 export function getClosureSection(hearing) {
@@ -26,6 +27,10 @@ export function getHearingURL(hearing, {fullscreen} = {}) {
     query = "?fullscreen=true";
   }
   return `${url}${query}`;
+}
+
+export function getHearingMainImageURL(hearing) {
+  return _.get(hearing, 'main_image.url');
 }
 
 
@@ -96,4 +101,32 @@ Return true if use can edit given hearing.
 export function canEdit(user, hearing) {
   // If the user is an admin of the hearing's organization, allow editing
   return Boolean(user && _.includes(user.adminOrganizations || [], hearing.organization));
+}
+
+export function getImageAsBase64Promise(image) {
+  const reader = new FileReader();
+  reader.readAsDataURL(image);
+  return new Promise(
+    (resolve) => {
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+    });
+}
+
+export function getOpenGraphMetaData(hearing, language) {
+  let hostname = "http://kerrokantasi.hel.fi";
+  if (typeof HOSTNAME === 'string') {
+    hostname = HOSTNAME;  // eslint-disable-line no-undef
+  } else if (typeof window !== 'undefined') {
+    hostname = window.location.protocol + "//" + window.location.host;
+  }
+  const url = hostname + "/" + hearing.slug;
+  return [
+    {property: "og:url", content: url},
+    {property: "og:type", content: "website"},
+    {property: "og:title", content: getAttr(hearing.title, language)},
+    {property: "og:image", content: hearing.main_image.url},
+    {property: "og:description", content: getAttr(hearing.abstract, language)}
+  ];
 }

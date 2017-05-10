@@ -4,22 +4,23 @@ import {push} from 'redux-router';
 import Button from 'react-bootstrap/lib/Button';
 import Col from 'react-bootstrap/lib/Col';
 import Row from 'react-bootstrap/lib/Row';
+import DeleteModal from './DeleteModal';
 import {injectIntl, intlShape, FormattedMessage} from 'react-intl';
+import ContactCard from './ContactCard';
+import Waypoint from 'react-waypoint';
 
 import {
-  fetchSectionComments, followHearing,
-  postSectionComment, postVote
+  fetchSectionComments, fetchMoreSectionComments, followHearing,
+  postSectionComment, editSectionComment, postVote, deleteSectionComment
 } from '../actions';
-import CommentList from './CommentList';
+import SortableCommentList from './SortableCommentList';
 import HearingImageList from './HearingImageList';
 import LabelList from './LabelList';
 import Section from './Section';
 import SectionList from './SectionList';
 import Sidebar from '../views/Hearing/Sidebar';
-import find from 'lodash/find';
-import _ from 'lodash';
+import _, {get, find} from 'lodash';
 import Icon from '../utils/Icon';
-import config from '../config';
 import {
   acceptsComments,
   getClosureSection,
@@ -32,20 +33,26 @@ import {
   userCanComment,
   userCanVote
 } from '../utils/section';
-
+import getAttr from '../utils/getAttr';
 
 export class Hearing extends React.Component {
+
+  constructor(props) {
+    super(props);
+
+    this.state = { showDeleteModal: false, commentToDelete: { } };
+  }
 
   openFullscreen(hearing) {
     this.props.dispatch(push(getHearingURL(hearing, {fullscreen: true})));
   }
 
-  onPostHearingComment(text, authorName) {
+  onPostHearingComment(text, authorName, pluginData, geojson, label, images) { // eslint-disable-line
     const {dispatch} = this.props;
     const hearingSlug = this.props.hearingSlug;
     const {authCode} = this.props.location.query;
     const mainSection = getMainSection(this.props.hearing);
-    const commentData = {text, authorName, pluginData: null, authCode, geojson: null, label: null, images: []};
+    const commentData = {text, authorName, pluginData: null, authCode, geojson: null, label: null, images};
     dispatch(postSectionComment(hearingSlug, mainSection.id, commentData));
   }
 
@@ -55,6 +62,27 @@ export class Hearing extends React.Component {
     const {authCode} = this.props.location.query;
     const commentData = Object.assign({authCode}, sectionCommentData);
     dispatch(postSectionComment(hearingSlug, sectionId, commentData));
+  }
+
+  onEditSectionComment(sectionId, commentId, commentData) {
+    const {dispatch} = this.props;
+    const hearingSlug = this.props.hearingSlug;
+    const {authCode} = this.props.location.query;
+    Object.assign({authCode}, commentData);
+    dispatch(editSectionComment(hearingSlug, sectionId, commentId, commentData));
+  }
+
+  onDeleteComment() {
+    const {dispatch} = this.props;
+    const {sectionId, commentId} = this.state.commentToDelete;
+    const hearingSlug = this.props.hearingSlug;
+    dispatch(deleteSectionComment(hearingSlug, sectionId, commentId));
+    this.forceUpdate();
+  }
+
+  handleDeleteClick(sectionId, commentId) {
+    this.setState({ commentToDelete: {sectionId, commentId}});
+    this.openDeleteModal();
   }
 
   onVoteComment(commentId, sectionId) {
@@ -71,11 +99,27 @@ export class Hearing extends React.Component {
 
   loadSectionComments(sectionId) {
     const {dispatch} = this.props;
-    const hearingSlug = this.props.hearingSlug;
-    dispatch(fetchSectionComments(hearingSlug, sectionId));
+    dispatch(fetchSectionComments(sectionId));
   }
 
+  loadMoreSectionComments(sectionId) {
+    const {dispatch, sectionComments} = this.props;
+    const commentsObject = get(sectionComments, `${sectionId}`);
+    const next = commentsObject && get(commentsObject, 'next');
+    if (next) {
+      const currentOrdering = get(commentsObject, 'ordering');
+      dispatch(fetchMoreSectionComments(sectionId, currentOrdering, next));
+    }
+  }
+
+  // loadSectionComments(sectionId) {
+  //   const {dispatch} = this.props;
+  //   const hearingSlug = this.props.hearingSlug;
+  //   dispatch(fetchSectionComments(hearingSlug, sectionId));
+  // }
+
   getOpenGraphMetaData(data) {
+    const {language} = this.props;
     let hostname = "http://kerrokantasi.hel.fi";
     if (typeof HOSTNAME === 'string') {
       hostname = HOSTNAME;  // eslint-disable-line no-undef
@@ -86,7 +130,7 @@ export class Hearing extends React.Component {
     return [
       {property: "og:url", content: url},
       {property: "og:type", content: "website"},
-      {property: "og:title", content: data.title}
+      {property: "og:title", content: getAttr(data.title, language)}
       // TODO: Add description and image?
     ];
   }
@@ -147,10 +191,9 @@ export class Hearing extends React.Component {
   }
 
   getCommentList() {
-    const hearing = this.props.hearing;
+    const {hearing, sectionComments, location, hearingSlug} = this.props;
     const mainSection = getMainSection(hearing);
     const user = this.props.user;
-    const reportUrl = config.apiBaseUrl + "/v1/hearing/" + this.props.hearingSlug + '/report';
     let userIsAdmin = false;
     if (hearing && user && _.has(user, 'adminOrganizations')) {
       userIsAdmin = _.includes(user.adminOrganizations, hearing.organization);
@@ -161,27 +204,38 @@ export class Hearing extends React.Component {
     return (
       <div>
         <div id="hearing-comments">
-          <CommentList
-           displayVisualization={userIsAdmin || hearing.closed}
+          <SortableCommentList
+            canVote={this.isMainSectionVotable(user)}
+            displayVisualization={userIsAdmin || hearing.closed}
            section={mainSection}
-           comments={this.props.sectionComments[mainSection.id] ?
-                     this.props.sectionComments[mainSection.id].data : []}
+           location={location}
+           mainSection={mainSection}
+           hearingSlug={hearingSlug}
+           comments={sectionComments[mainSection.id] ?
+                     sectionComments[mainSection.id].results : []}
            canComment={this.isMainSectionCommentable(hearing, user)}
            onPostComment={this.onPostHearingComment.bind(this)}
-           canVote={this.isMainSectionVotable(user)}
+           onEditComment={this.onEditSectionComment.bind(this)}
+           onDeleteComment={this.handleDeleteClick.bind(this)}
            onPostVote={this.onVoteComment.bind(this)}
            canSetNickname={user === null}
           />
         </div>
         <hr/>
-        <a href={reportUrl}><FormattedMessage id="downloadReport"/></a>
       </div>
     );
   }
 
+  openDeleteModal() {
+    this.setState({ showDeleteModal: true });
+  }
+
+  closeDeleteModal() {
+    this.setState({ showDeleteModal: false, commentToDelete: {} });
+  }
+
   render() {
-    const hearing = this.props.hearing;
-    const user = this.props.user;
+    const {hearing, hearingSlug, user, language, dispatch, changeCurrentlyViewed, currentlyViewed} = this.props;
     const hearingAllowsComments = acceptsComments(hearing);
     const mainSection = getMainSection(hearing);
     const closureInfoSection = this.getClosureInfo(hearing);
@@ -192,20 +246,32 @@ export class Hearing extends React.Component {
     return (
       <div id="hearing-wrapper">
         <LabelList className="main-labels" labels={hearing.labels}/>
-
+        <Waypoint onEnter={() => changeCurrentlyViewed('#hearing')}/>
         <h1 className="page-title">
           {this.getFollowButton()}
           {!hearing.published ? <Icon name="eye-slash"/> : null}
-          {hearing.title}
+          {getAttr(hearing.title, language)}
         </h1>
 
         <Row>
-          <Sidebar hearing={hearing} mainSection={mainSection} sectionGroups={sectionGroups}/>
+          <Sidebar
+            currentlyViewed={currentlyViewed}
+            hearing={hearing}
+            mainSection={mainSection}
+            sectionGroups={sectionGroups}
+            activeLanguage={language}
+            dispatch={dispatch}
+            hearingSlug={hearingSlug}
+          />
           <Col md={8} lg={9}>
             <div id="hearing">
+              <Waypoint onEnter={() => changeCurrentlyViewed('#hearing')} topOffset={'-30%'}/>
               <div>
                 <HearingImageList images={mainSection.images}/>
-                <div className="hearing-abstract lead" dangerouslySetInnerHTML={{__html: hearing.abstract}}/>
+                <div
+                  className="hearing-abstract lead"
+                  dangerouslySetInnerHTML={{__html: getAttr(hearing.abstract, language)}}
+                />
               </div>
               {hearing.closed ? <Section section={closureInfoSection} canComment={false}/> : null}
               {mainSection ? <Section
@@ -222,10 +288,11 @@ export class Hearing extends React.Component {
             </div>
 
             {this.getLinkToFullscreen(hearing)}
-
             {sectionGroups.map((sectionGroup) => (
               <div id={"hearing-sectiongroup-" + sectionGroup.type} key={sectionGroup.type}>
+                <Waypoint onEnter={() => changeCurrentlyViewed('#hearing-sectiongroup' + sectionGroup.name_singular)}/>
                 <SectionList
+                  basePath={location.pathname}
                   sections={sectionGroup.sections}
                   nComments={sectionGroup.n_comments}
                   canComment={hearingAllowsComments}
@@ -238,9 +305,22 @@ export class Hearing extends React.Component {
                 />
               </div>
             ))}
+            <Waypoint onEnter={() => changeCurrentlyViewed('#hearing-comments')} topOffset={'-300px'}/>
             {this.getCommentList()}
+
+            {hearing.contact_persons && hearing.contact_persons.length ?
+              <h2><FormattedMessage id="contactPersons"/></h2> :
+              null}
+            {hearing.contact_persons && hearing.contact_persons.map((person, index) =>
+              <ContactCard key={index} {...person}/> // eslint-disable-line react/no-array-index-key
+            )}
           </Col>
         </Row>
+        <DeleteModal
+          isOpen={this.state.showDeleteModal}
+          close={this.closeDeleteModal.bind(this)}
+          onDeleteComment={this.onDeleteComment.bind(this)}
+        />
       </div>
     );
   }
@@ -251,13 +331,16 @@ Hearing.propTypes = {
   dispatch: React.PropTypes.func,
   hearing: React.PropTypes.object,
   hearingSlug: React.PropTypes.string,
+  language: React.PropTypes.string,
   location: React.PropTypes.object,
   user: React.PropTypes.object,
   sectionComments: React.PropTypes.object,
+  changeCurrentlyViewed: React.PropTypes.func,
+  currentlyViewed: React.PropTypes.string
 };
 
 export function wrapHearingComponent(component, pure = true) {
-  const wrappedComponent = connect(null, null, null, {pure})(injectIntl(component));
+  const wrappedComponent = connect((state) => ({language: state.language}), null, null, {pure})(injectIntl(component));
   // We need to re-hoist the data statics to the wrapped component due to react-intl:
   wrappedComponent.canRenderFully = component.canRenderFully;
   wrappedComponent.fetchData = component.fetchData;

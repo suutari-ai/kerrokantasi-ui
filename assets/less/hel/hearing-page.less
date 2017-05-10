@@ -3,6 +3,49 @@
     padding: 15px;
     font-size: 1.4rem;
     margin-bottom: 25px;
+    overflow-y: scroll;
+
+    .list-group {
+        .list-group-item {
+            color: @gray-light;
+            &:hover {
+                color: #FFFFFF;
+                background: #005eb8;
+            }
+
+            .active {
+                color: #FFFFFF;
+            }
+        }
+        a {
+
+            :hover {
+                color: #FFFFFF;
+            }
+            .active {
+                color: #FFFFFF;
+            }
+        }
+        .active {
+            color: #FFFFFF;
+        }
+    }
+
+    .language-link {
+        padding: 4px;
+        border-radius: 4px;
+
+        a {
+            cursor: pointer;
+        }
+
+        &-active {
+            padding: 4px;
+            border-radius: 4px;
+            background: @gray-light;
+            color: #fff;
+        }
+    }
 
     @media (max-width: @screen-sm-max) {
         position: static !important;
@@ -20,11 +63,19 @@
         }
 
         &.map {
-            margin-bottom: 0;
-            margin-top: 20px;
+            margin: 20px auto;
         }
         .list-group-item:first-letter {
             text-transform:capitalize;
+        }
+
+        &.further-info .flex {
+          display: flex;
+          flex-wrap: wrap;
+
+          & > div {
+              margin-right: 20px;
+          }
         }
     }
 
@@ -39,6 +90,10 @@
         text-transform: uppercase;
         font-size: 1.3rem;
         color: @text-color;
+    }
+
+    h5 {
+      font-size: 1.4rem;
     }
 
     .list-group .badge {
@@ -154,11 +209,37 @@
             font-size: 1.4rem;
         }
     }
+    &__edit-form {
+        padding-top: 10px;
+    }
 }
 
 .comment-form {
     background-color: @hel-yellow;
     padding: 1em;
+
+    &__file {
+        margin: 10px 0;
+        padding-top: 10px;
+    }
+
+    &__image-too-big {
+        color: red !important;
+        padding-bottom: 10px;
+    }
+
+    &__select-button {
+        padding: 10px 0;
+    }
+
+    &__selected-images {
+        padding-top: 10px;
+    }
+
+    textarea {
+      height: 7em;
+      line-height: 1em;
+    }
 }
 
 .comment-conditions {
@@ -190,24 +271,41 @@
 }
 
 #hearing-comments,
-[id^='hearing-sectiongroup-'] {
+[id^='hearing-sectiongroup-'],
+.commentlist {
     padding-top: 50px;
 
     h2:first-letter {
         text-transform:capitalize;
     }
-
-    .commenticon {
-        float: right;
-    }
 }
 
 .hearing-section {
-    h2 {
-        font-size: 20px;
+
+    .sortable-comment-list {
+        padding-top: 50px;
     }
+
     .commentlist {
-        background-color: @brand-gray-light;
         padding: 15px;
     }
+}
+
+.delete-modal {
+    margin-top: 25%;
+
+    @media (max-width: @screen-sm-max) {
+        margin-top: 55%;
+    }
+}
+
+.commentlist .commentlist__load-more {
+  background: @brand-gray-light;
+  padding: 20px 15px 15px;
+  text-align: center;
+}
+
+
+.commenticon {
+    float: right;
 }

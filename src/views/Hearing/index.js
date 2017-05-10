@@ -4,13 +4,21 @@ import Helmet from 'react-helmet';
 import LoadSpinner from '../../components/LoadSpinner';
 import React from 'react';
 import {connect} from 'react-redux';
-import {fetchHearing} from '../../actions';
-import {getMainSection, getHearingURL} from '../../utils/hearing';
-import {injectIntl, intlShape} from 'react-intl';
+import {fetchHearing, changeCurrentlyViewed} from '../../actions';
+import {getMainSection, getHearingURL, getOpenGraphMetaData} from '../../utils/hearing';
+import {injectIntl} from 'react-intl';
 import {push} from 'redux-router';
+import getAttr from '../../utils/getAttr';
 
 
 export class HearingView extends React.Component {
+
+  constructor(props) {
+    super(props);
+
+    this.state = {currentlyViewed: 'hearing'};
+    this.changeCurrentlyViewed = this.changeCurrentlyViewed.bind(this);
+  }
   /**
    * Return a promise that will, as it fulfills, have added requisite
    * data for the HearingView view into the dispatch's associated store.
@@ -44,20 +52,12 @@ export class HearingView extends React.Component {
     HearingView.fetchData(dispatch, null, location, params);
   }
 
-  getOpenGraphMetaData(data) {
-    let hostname = "http://kerrokantasi.hel.fi";
-    if (typeof HOSTNAME === 'string') {
-      hostname = HOSTNAME;  // eslint-disable-line no-undef
-    } else if (typeof window !== 'undefined') {
-      hostname = window.location.protocol + "//" + window.location.host;
-    }
-    const url = hostname + this.props.location.pathname;
-    return [
-      {property: "og:url", content: url},
-      {property: "og:type", content: "website"},
-      {property: "og:title", content: data.title}
-      // TODO: Add description and image?
-    ];
+  componentWillMount() {
+    window.scrollTo(0, 0);
+  }
+
+  changeCurrentlyViewed(viewedItem) {
+    changeCurrentlyViewed(this.props.dispatch, viewedItem);
   }
 
   renderSpinner() {  // eslint-disable-line class-methods-use-this
@@ -82,7 +82,7 @@ export class HearingView extends React.Component {
   render() {
     const {hearingSlug} = this.props.params;
     const {state, data: hearing} = (this.props.hearing[hearingSlug] || {state: 'initial'});
-    const {user} = this.props;
+    const {user, language, dispatch, currentlyViewed} = this.props;
 
     if (state !== 'done') {
       return this.renderSpinner();
@@ -92,14 +92,17 @@ export class HearingView extends React.Component {
     const HearingComponent = fullscreen ? FullscreenHearing : DefaultHearingComponent;
 
     return (
-      <div className={fullscreen ? "fullscreen-hearing" : "container"}>
-        <Helmet title={hearing.title} meta={this.getOpenGraphMetaData(hearing)} />
+      <div key="hearing" className={fullscreen ? "fullscreen-hearing" : "container"}>
+        <Helmet title={getAttr(hearing.title, language)} meta={getOpenGraphMetaData(hearing, language)} />
         <HearingComponent
           hearingSlug={hearingSlug}
           hearing={hearing}
           user={user}
           sectionComments={this.props.sectionComments}
           location={this.props.location}
+          dispatch={dispatch}
+          changeCurrentlyViewed={this.changeCurrentlyViewed}
+          currentlyViewed={currentlyViewed}
         />
       </div>
     );
@@ -107,20 +110,23 @@ export class HearingView extends React.Component {
 }
 
 HearingView.propTypes = {
-  intl: intlShape.isRequired,
   dispatch: React.PropTypes.func,
   hearing: React.PropTypes.object,
   params: React.PropTypes.object,
+  language: React.PropTypes.string,
   location: React.PropTypes.object,
   user: React.PropTypes.object,
   sectionComments: React.PropTypes.object,
+  currentlyViewed: React.PropTypes.string
 };
 
 export function wrapHearingView(view) {
   const wrappedView = connect((state) => ({
     user: state.user,
     hearing: state.hearing,
+    language: state.language,
     sectionComments: state.sectionComments,
+    currentlyViewed: state.hearing.currentlyViewed
   }))(injectIntl(view));
 
   // We need to re-hoist the data statics to the wrapped component due to react-intl:

@@ -2,6 +2,7 @@
 import React from 'react';
 import Nav from 'react-bootstrap/lib/Nav';
 import NavItem from 'react-bootstrap/lib/NavItem';
+import LanguageSwitcher from './LanguageSwitcher';
 import {FormattedMessage} from 'react-intl';
 import {connect} from 'react-redux';
 import {login, logout} from '../../actions';
@@ -103,13 +104,13 @@ class Header extends React.Component {
             </button>
             <div className="nav-wrap">
               <Nav className="nav-items" onSelect={onSelect}>
-                {this.getNavItem("hearings", "/hearings")}
-                {this.getNavItem("hearingMap", "/map")}
+                {this.getNavItem("hearings", "/hearings/list")}
+                {this.getNavItem("hearingMap", "/hearings/map")}
                 {this.getNavItem("info", "/info")}
               </Nav>
+              <LanguageSwitcher currentLanguage={this.props.language}/>
               <Nav className="actions" onSelect={onSelect}>
                 {userItems}
-                {/* <LanguageDropdown currentLanguage={this.props.language}/> */}
               </Nav>
             </div>
           </div>
@@ -123,7 +124,6 @@ Header.propTypes = {
   dispatch: React.PropTypes.func,
   history: React.PropTypes.object,
   language: React.PropTypes.string,
-  slim: React.PropTypes.bool,
   user: React.PropTypes.object,
 };
 

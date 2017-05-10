@@ -1,7 +1,7 @@
-@bower-dir: "../../bower_components";
-@bootstrap-dir: "@{bower-dir}/bootstrap/less";
-@font-awesome-dir: "@{bower-dir}/font-awesome/less";
-@leaflet-dir: "@{bower-dir}/leaflet/dist";
+@node-modules-dir: "../../node_modules";
+@bootstrap-dir: "@{node-modules-dir}/bootstrap/less";
+@font-awesome-dir: "@{node-modules-dir}/font-awesome/less";
+@leaflet-dir: "@{node-modules-dir}/leaflet/dist";
 
 ///// Local fonts and variables
 @import "hel/fonts";
@@ -43,7 +43,7 @@
 @import "@{bootstrap-dir}/close";
 
 // Components w/ JavaScript
-//@import "@{bootstrap-dir}/modals";
+@import "@{bootstrap-dir}/modals";
 @import "@{bootstrap-dir}/tooltip";
 //@import "@{bootstrap-dir}/popovers";
 //@import "@{bootstrap-dir}/carousel";
@@ -65,3 +65,10 @@
 @import "hel/hearing-list";
 @import "hel/footer";
 @import "hel/fullscreen-map-plugin";
+@import "hel/fullwidth-hearing";
+@import "hel/hearing-card";
+@import "hel/hearing-card-list";
+@import "hel/commentlist";
+
+@import "../../node_modules/react-select/dist/react-select.css";
+@import "hel/question-page";

@@ -2,6 +2,7 @@ import {createAction} from 'redux-actions';
 import api from '../api';
 import {alert, notifySuccess, notifyError} from '../utils/notify';
 import merge from 'lodash/merge';
+import parse from 'url-parse';
 
 export {login, logout, retrieveUserFromSession} from './user';
 export const setLanguage = createAction('setLanguage');
@@ -12,6 +13,10 @@ function checkResponseStatus(response) {
     err.response = response;
     throw err;
   }
+}
+
+export function changeCurrentlyViewed(dispatch, newViewed) {
+  dispatch(createAction('changeCurrentlyViewed')({newViewed}));
 }
 
 function getResponseJSON(response) {
@@ -43,6 +48,17 @@ export function fetchHearingList(listId, endpoint, params) {
   };
 }
 
+export function fetchLabels() {
+  return (dispatch, getState) => {
+    const fetchAction = createAction('beginFetchLabels');
+    dispatch(fetchAction);
+
+    return api.get(getState(), '/v1/label/').then(getResponseJSON).then((data) => {
+      dispatch(createAction('receiveLabels')({ data: data.results }));
+    }).catch(requestErrorHandler(dispatch, fetchAction));
+  };
+}
+
 export function fetchHearing(hearingSlug, previewKey = null) {
   return (dispatch, getState) => {
     const fetchAction = createAction("beginFetchHearing")({hearingSlug});
@@ -68,16 +84,61 @@ export function followHearing(hearingSlug) {
   };
 }
 
-export function fetchSectionComments(hearingSlug, sectionId) {
+export function fetchSectionComments(sectionId, ordering = '-created_at', cleanFetch = true) {
   return (dispatch, getState) => {
-    const fetchAction = createAction("beginFetchSectionComments")({hearingSlug, sectionId});
+    const fetchAction = createAction("beginFetchSectionComments")({sectionId, ordering, cleanFetch});
     dispatch(fetchAction);
-    const url = "v1/hearing/" + hearingSlug + "/sections/" + sectionId + "/comments";
-    return api.get(getState(), url, {include: 'plugin_data'}).then(getResponseJSON).then((data) => {
-      dispatch(createAction("receiveSectionComments")({hearingSlug, sectionId, data}));
+    const url = "v1/comment/";
+    const params = {
+      section: sectionId,
+      include: 'plugin_data',
+      limit: 10,
+      ...(ordering && {ordering})
+    };
+    return api.get(getState(), url, params).then(getResponseJSON).then((data) => {
+      dispatch(createAction("receiveSectionComments")({sectionId, data}));
     }).catch(requestErrorHandler(dispatch, fetchAction));
   };
 }
+
+export function fetchMoreSectionComments(sectionId, ordering = '-created_at', next) {
+  const cleanFetch = false;
+
+  return (dispatch, getState) => {
+    const fetchAction = createAction('beginFetchSectionComments')({sectionId, ordering, cleanFetch});
+    dispatch(fetchAction);
+    const url = parse(next, true);
+    return api.get(getState(), 'v1/comment/', url.query).then(getResponseJSON).then((data) => {
+      dispatch(createAction('receiveSectionComments')({sectionId, data}));
+    }).catch(requestErrorHandler(dispatch, fetchAction));
+  };
+}
+
+/**
+ * fetchSectionComments
+ * @param  {string} sectionId
+ * @param  {string} [ordering]  eg. 'n_votes', 'created_at'
+ * @return {function}
+ */
+// export function fetchSectionComments(sectionId, ordering) {
+//   return (dispatch, getState) => {
+//     const fetchAction = createAction('beginFetchSectionComments')({sectionId});
+//     dispatch(fetchAction);
+//     const endpoint = 'v1/comment/';
+//     const defaultParams = {
+//       section: sectionId,
+//       include: 'plugin_data'
+//     };
+//     const params = {
+//       ...defaultParams,
+//       ...(ordering && {ordering})
+//     };
+//     return api.get(getState(), endpoint, params).then(getResponseJSON).then((data) => {
+//       debugger; // eslint-disable-line
+//       dispatch(createAction('receiveSectionComments'))({sectionId, data});
+//     });// .catch(requestErrorHandler(dispatch, fetchAction));
+//   };
+// }
 
 export function postSectionComment(hearingSlug, sectionId, commentData = {}) {
   return (dispatch, getState) => {
@@ -98,8 +159,38 @@ export function postSectionComment(hearingSlug, sectionId, commentData = {}) {
     return api.post(getState(), url, params).then(getResponseJSON).then((data) => {
       dispatch(createAction("postedComment")({hearingSlug, sectionId, data}));
       dispatch(fetchHearing(hearingSlug));
-      dispatch(fetchSectionComments(hearingSlug, sectionId));
+      dispatch(fetchSectionComments(sectionId));
       alert("Kommenttisi on vastaanotettu. Kiitos!");
+    }).catch(requestErrorHandler(dispatch, fetchAction));
+  };
+}
+
+export function editSectionComment(hearingSlug, sectionId, commentId, commentData = {}) {
+  return (dispatch, getState) => {
+    const fetchAction = createAction("postingComment")({hearingSlug, sectionId});
+    dispatch(fetchAction);
+    const url = ("/v1/hearing/" + hearingSlug + "/sections/" + sectionId + "/comments/" + commentId);
+    const params = commentData;
+
+    return api.put(getState(), url, params).then(getResponseJSON).then((data) => {
+      dispatch(createAction("postedComment")({hearingSlug, sectionId, data}));
+      dispatch(fetchHearing(hearingSlug));
+      dispatch(fetchSectionComments(sectionId));
+      alert("Kommenttisi muokattu. Kiitos!");
+    }).catch(requestErrorHandler(dispatch, fetchAction));
+  };
+}
+
+export function deleteSectionComment(hearingSlug, sectionId, commentId) {
+  return (dispatch, getState) => {
+    const fetchAction = createAction("postingComment")({hearingSlug, sectionId});
+    dispatch(fetchAction);
+    const url = ("/v1/hearing/" + hearingSlug + "/sections/" + sectionId + "/comments/" + commentId);
+
+    return api.apiDelete(getState(), url).then(() => {
+      dispatch(fetchHearing(hearingSlug));
+      dispatch(fetchSectionComments(sectionId));
+      alert("Kommenttisi on poistettu.");
     }).catch(requestErrorHandler(dispatch, fetchAction));
   };
 }
@@ -112,12 +203,12 @@ export function postVote(commentId, hearingSlug, sectionId) {
     return api.post(getState(), url).then(getResponseJSON).then((data) => {
       dispatch(createAction("postedCommentVote")({commentId, hearingSlug, sectionId, data}));
       dispatch(fetchHearing(hearingSlug));
-      dispatch(fetchSectionComments(hearingSlug, sectionId));
+      dispatch(fetchSectionComments(sectionId));
       if (data.status_code === 304) {
         notifyError("Olet jo antanut äänesi tälle kommentille.");
       } else {
         notifySuccess("Ääni vastaanotettu. Kiitos!");
       }
-    }).catch(requestErrorHandler(dispatch, fetchAction));
+    }).catch(requestErrorHandler(fetchAction));
   };
 }
