@@ -3,7 +3,7 @@ import config from './config';
 import merge from 'lodash/merge';
 import qs from 'querystring';
 
-import getSettings from './getSettings';
+import getSettings from '../server/getSettings';
 
 
 function getApiURL(endpoint, params = null) {
