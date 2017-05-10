@@ -3,9 +3,6 @@ import config from './config';
 import merge from 'lodash/merge';
 import qs from 'querystring';
 
-import getSettings from '../server/getSettings';
-
-
 function getApiURL(endpoint, params = null) {
   let url = (config.apiBaseUrl.replace(/\/$/g, '') + "/" + endpoint.replace(/^\//g, ''));
   if (!/\/$/.test(url)) url += "/";  // All API endpoints end with a slash
@@ -28,7 +25,7 @@ export function apiCall(state, endpoint, params, options = {}) {
     "Accept": "application/json"  // eslint-disable-line quote-props
   };
   if (user && user.token) {
-    defaultHeaders.Authorization = getSettings().jwtPrefix + user.token;
+    defaultHeaders.Authorization = "Bearer " + user.token;
   }
   options.headers = merge(defaultHeaders, options.headers || {});  // eslint-disable-line no-param-reassign
   const url = getApiURL(endpoint, params);
