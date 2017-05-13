@@ -25,9 +25,10 @@ MockStrategy.prototype.authenticate = function mockAuthenticate() {
   const profile = {
     id: '5ca1ab1e-cafe-babe-beef-deadbea70000',
     displayName: 'Mock von User',
-    firstName: 'Mock',
-    lastName: 'von User',
-    username: 'mock.von.user',
+    name: {
+      givenName: 'Mock',
+      familyName: 'von User'
+    },
     provider: 'helsinki'
   };
   profile.token = generateToken(profile, this.options);
@@ -43,7 +44,11 @@ export function getHelsinkiStrategy(settings) {
   const helsinkiStrategy = new HelsinkiStrategy({
     clientID: settings.helsinkiAuthId,
     clientSecret: settings.helsinkiAuthSecret,
-    callbackURL: settings.publicUrl + '/login/helsinki/return'
+    callbackURL: settings.publicUrl + '/login/helsinki/return',
+    appTokenURL: settings.helssoUrl + '/jwt-token/',
+    authorizationURL: settings.helssoUrl + '/oauth2/authorize/',
+    tokenURL: settings.helssoUrl + '/oauth2/token/',
+    userProfileURL: settings.helssoUrl + '/user/'
   }, (accessToken, refreshToken, profile, done) => {
     debug('access token:', accessToken);
     debug('refresh token:', refreshToken);
@@ -67,15 +72,23 @@ export function getHelsinkiStrategy(settings) {
 
 
 export function getOIDCStrategy(settings) {
-  const helssoUrl = 'http://localhost:8000';
+  const issuerUrl = settings.helssoUrl + '/openid';
+
+  // TODO: Construct issuer with discover!
+  // Issuer.discover(issuerUrl + '/openid')
+  //   .then((issuer) => (
+  //     console.log('Discovered issuer %s', issuer);
+  //   ));
+  // openidClient.Issuer.discover(issuerUrl + '/openid').then(
+  // );
   const issuer = new openidClient.Issuer({
-    issuer: helssoUrl + '/openid',
-    authorization_endpoint: helssoUrl + '/openid/authorize',
-    token_endpoint: helssoUrl + '/openid/token',
-    userinfo_endpoint: helssoUrl + '/openid/userinfo',
-    jwks_uri: helssoUrl + '/openid/jwks',
+    issuer: issuerUrl,
+    authorization_endpoint: issuerUrl + '/authorize',
+    token_endpoint: issuerUrl + '/token',
+    userinfo_endpoint: issuerUrl + '/userinfo',
+    jwks_uri: issuerUrl + '/jwks',
     id_token_signing_alg_values_supported: ['HS256', 'RS256'],
-    end_session_endpoint: helssoUrl + '/openid/end-session',
+    end_session_endpoint: issuerUrl + '/end-session',
     token_endpoint_auth_methods_supported: [
       'client_secret_post',
       'client_secret_basic'
@@ -90,11 +103,6 @@ export function getOIDCStrategy(settings) {
     ],
     subject_types_supported: ['public']
   });
-  // TODO: Construct issuer with discover!
-  // Issuer.discover(helssoUrl + '/openid')
-  //   .then((issuer) => (
-  //     console.log('Discovered issuer %s', issuer);
-  //   ));
   const client = new issuer.Client({
     client_id: '358712',
     redirect_uris: [settings.publicUrl + '/login/helsinki/return'],
@@ -117,33 +125,34 @@ export function getOIDCStrategy(settings) {
       // User.findOne({ id: tokenset.claims.sub }, function (err, user) {
       //  if (err) return done(err);
       const profile = {
+        provider: 'helsinki-oidc',
         id: userinfo.sub,
-        displayName: userinfo.name,
+        displayName: userinfo.name || userinfo.nickname,
         name: {
           familyName: userinfo.family_name,
           givenName: userinfo.given_name
         },
-        // department: userinfo.department_name,
-        /* emails: [
-          {value: userinfo.email}
-        ], */
-        username: userinfo.preferred_username,
-        token: tokenset.id_token
+        emails: {
+          value: userinfo.email
+        },
+        token: tokenset.id_token,
+        _data: userinfo
       };
       return done(null, profile);
     }
   );
+  strategy.name = 'helsinki-oidc';
   debug('strategy._params:', strategy._params);
   return strategy;
 }
 
 
 export function getPassport(settings) {
-  const jwtOptions = {key: settings.jwtKey, audience: 'kerrokantasi'};
+  const jwtOptions = {key: settings.jwtKey, audience: settings.helsinkiTargetApp};
   const passport = new Passport();
 
   passport.use(getHelsinkiStrategy(settings));
-  passport.use('oidc', getOIDCStrategy(settings));
+  passport.use(getOIDCStrategy(settings));
   passport.use(new MockStrategy(jwtOptions));
 
   passport.serializeUser((user, done) => {
@@ -169,8 +178,8 @@ export function addAuth(server, settings) {
 
   switch (settings.authStrategy) {
     case 'helsinki-oidc':
-      server.get('/login/helsinki', passport.authenticate('oidc'));
-      server.get('/login/helsinki/return', passport.authenticate('oidc'), successfulLoginHandler);
+      server.get('/login/helsinki', passport.authenticate('helsinki-oidc'));
+      server.get('/login/helsinki/return', passport.authenticate('helsinki-oidc'), successfulLoginHandler);
       break;
     case 'mock':
       server.get('/login/mock', passport.authenticate('mock'), successfulLoginHandler);
