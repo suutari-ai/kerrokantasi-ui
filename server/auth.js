@@ -40,7 +40,10 @@ MockStrategy.prototype.authenticate = function mockAuthenticate() {
 
 export function getHelsinkiStrategy(settings) {
   const getTokenFromAPI = true;
-  const jwtOptions = {key: settings.jwtKey, audience: 'kerrokantasi'};
+  const jwtOptions = {
+    key: settings.jwtKey,
+    audience: settings.helsinkiTargetApp
+  };
 
   const helsinkiStrategy = new HelsinkiStrategy({
     clientID: settings.helsinkiAuthId,
@@ -145,7 +148,10 @@ export function getOIDCStrategy(settings) {
 
 
 export function getPassport(settings) {
-  const jwtOptions = {key: settings.jwtKey, audience: 'kerrokantasi'};
+  const jwtOptions = {
+    key: settings.jwtKey,
+    audience: settings.helsinkiTargetApp
+  };
   const passport = new Passport();
 
   passport.use(getHelsinkiStrategy(settings));
