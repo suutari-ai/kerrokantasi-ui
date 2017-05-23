@@ -122,7 +122,7 @@ export function getOIDCStrategy(settings) {
       const profile = {
         provider: 'helsinki-oidc',
         id: userinfo.sub,
-        displayName: userinfo.name,
+        displayName: userinfo.name || userinfo.nickname,
         name: {
           familyName: userinfo.family_name,
           givenName: userinfo.given_name
