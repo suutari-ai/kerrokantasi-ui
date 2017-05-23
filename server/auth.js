@@ -135,6 +135,7 @@ export function getOIDCStrategy(settings) {
       return done(null, profile);
     }
   );
+  strategy.name = 'helsinki-oidc';
   debug('strategy._params:', strategy._params);
   return strategy;
 }
@@ -145,7 +146,7 @@ export function getPassport(settings) {
   const passport = new Passport();
 
   passport.use(getHelsinkiStrategy(settings));
-  passport.use('oidc', getOIDCStrategy(settings));
+  passport.use(getOIDCStrategy(settings));
   passport.use(new MockStrategy(jwtOptions));
 
   passport.serializeUser((user, done) => {
@@ -171,8 +172,8 @@ export function addAuth(server, settings) {
 
   switch (settings.authStrategy) {
     case 'helsinki-oidc':
-      server.get('/login/helsinki', passport.authenticate('oidc'));
-      server.get('/login/helsinki/return', passport.authenticate('oidc'), successfulLoginHandler);
+      server.get('/login/helsinki', passport.authenticate('helsinki-oidc'));
+      server.get('/login/helsinki/return', passport.authenticate('helsinki-oidc'), successfulLoginHandler);
       break;
     case 'mock':
       server.get('/login/mock', passport.authenticate('mock'), successfulLoginHandler);
