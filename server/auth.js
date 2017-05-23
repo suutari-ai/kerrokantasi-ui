@@ -128,9 +128,9 @@ export function getOIDCStrategy(settings) {
           givenName: userinfo.given_name
         },
         // department: userinfo.department_name,
-        /* emails: [
-          {value: userinfo.email}
-        ], */
+        emails: {
+          value: userinfo.email
+        },
         username: userinfo.preferred_username,
         token: tokenset.id_token
       };
