@@ -16,6 +16,14 @@ function generateToken(profile, options) {
   });
 }
 
+function getMockStrategy(settings) {
+  const jwtOptions = {
+    key: settings.jwtKey,
+    audience: settings.helsinkiTargetApp
+  };
+  return new MockStrategy(jwtOptions);
+}
+
 function MockStrategy(options) {
   this.name = 'mock';
   this.options = options;
@@ -148,15 +156,11 @@ export function getOIDCStrategy(settings) {
 
 
 export function getPassport(settings) {
-  const jwtOptions = {
-    key: settings.jwtKey,
-    audience: settings.helsinkiTargetApp
-  };
   const passport = new Passport();
 
   passport.use(getHelsinkiStrategy(settings));
   passport.use(getOIDCStrategy(settings));
-  passport.use(new MockStrategy(jwtOptions));
+  passport.use(getMockStrategy(settings));
 
   passport.serializeUser((user, done) => {
     debug('serializing user:', user);
