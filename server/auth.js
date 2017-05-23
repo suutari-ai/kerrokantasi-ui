@@ -56,7 +56,11 @@ export function getHelsinkiStrategy(settings) {
   const helsinkiStrategy = new HelsinkiStrategy({
     clientID: settings.helsinkiAuthId,
     clientSecret: settings.helsinkiAuthSecret,
-    callbackURL: settings.publicUrl + '/login/helsinki/return'
+    callbackURL: settings.publicUrl + '/login/helsinki/return',
+    appTokenURL: settings.helssoUrl + '/jwt-token/',
+    authorizationURL: settings.helssoUrl + '/oauth2/authorize/',
+    tokenURL: settings.helssoUrl + '/oauth2/token/',
+    userProfileURL: settings.helssoUrl + '/user/'
   }, (accessToken, refreshToken, profile, done) => {
     debug('access token:', accessToken);
     debug('refresh token:', refreshToken);
