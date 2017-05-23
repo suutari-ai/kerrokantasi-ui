@@ -37,7 +37,6 @@ MockStrategy.prototype.authenticate = function mockAuthenticate() {
       givenName: 'Mock',
       familyName: 'von User'
     },
-    username: 'mock.von.user',
     provider: 'helsinki'
   };
   profile.token = generateToken(profile, this.options);
@@ -146,7 +145,6 @@ export function getOIDCStrategy(settings) {
         emails: {
           value: userinfo.email
         },
-        username: userinfo.preferred_username,
         token: tokenset.id_token,
         _data: userinfo
       };
