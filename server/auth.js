@@ -132,7 +132,8 @@ export function getOIDCStrategy(settings) {
           value: userinfo.email
         },
         username: userinfo.preferred_username,
-        token: tokenset.id_token
+        token: tokenset.id_token,
+        _data: userinfo
       };
       return done(null, profile);
     }
