@@ -25,8 +25,10 @@ MockStrategy.prototype.authenticate = function mockAuthenticate() {
   const profile = {
     id: '5ca1ab1e-cafe-babe-beef-deadbea70000',
     displayName: 'Mock von User',
-    firstName: 'Mock',
-    lastName: 'von User',
+    name: {
+      givenName: 'Mock',
+      familyName: 'von User'
+    },
     username: 'mock.von.user',
     provider: 'helsinki'
   };
