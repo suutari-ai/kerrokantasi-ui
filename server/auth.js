@@ -118,6 +118,7 @@ export function getOIDCStrategy(settings) {
       // User.findOne({ id: tokenset.claims.sub }, function (err, user) {
       //  if (err) return done(err);
       const profile = {
+        provider: 'helsinki-oidc',
         id: userinfo.sub,
         displayName: userinfo.name,
         name: {
